@@ -6,44 +6,46 @@
     <title>COT Sentiment Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; text-align: center; margin: 20px; }
-        .chart-container { width: 95%; max-width: 800px; margin: auto; background: #111; padding: 15px; border-radius: 10px; border: 1px solid #333; box-shadow: 0 0 20px rgba(0,255,0,0.1); }
-        h1 { font-size: 1.5rem; text-shadow: 0 0 10px #0f0; margin-bottom: 20px; }
-        .footer { color: #555; margin-top: 20px; font-size: 0.8rem; }
+        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; text-align: center; margin: 0; padding: 20px; }
+        .chart-container { width: 100%; max-width: 800px; margin: auto; background: #111; padding: 15px; border-radius: 10px; border: 1px solid #333; box-shadow: 0 0 20px rgba(0,255,0,0.1); box-sizing: border-box; }
+        h1 { font-size: 1.2rem; text-shadow: 0 0 10px #0f0; margin-bottom: 20px; text-transform: uppercase; }
+        .footer { color: #444; margin-top: 20px; font-size: 0.7rem; }
     </style>
 </head>
 <body>
 
-    <h1>INSTITUTIONAL SENTIMENT</h1>
+    <h1>Institutional Sentiment (COT)</h1>
     
     <div class="chart-container">
         <canvas id="cotChart"></canvas>
     </div>
 
-    <div class="footer">Dados lidos em tempo real do Google Sheets</div>
+    <div class="footer">Ligado em tempo real ao Google Sheets</div>
 
     <script>
-        // O teu link de exportação direta configurado
-        const csvURL = "https://docs.google.com/spreadsheets/d/1OQoOsv37W-A9oU4OSajwPm-Wnu511rYKcDPchGLhxnM/export?format=csv";
+        // Link de exportação direta da tua folha específica
+        const csvURL = "https://docs.google.com/spreadsheets/d/1OQoOsv37W-A9oU4OSajwPm-Wnu511rYKcDPchGLhxnM/gviz/tq?tqx=out:csv";
 
         async function loadChart() {
             try {
                 const response = await fetch(csvURL);
-                if (!response.ok) throw new Error("Não foi possível aceder à folha");
-                
                 const csvText = await response.text();
-                // Divide por linhas e depois por vírgulas
-                const rows = csvText.split('\n').map(row => row.split(','));
+                
+                // Limpeza: Divide por linhas e remove aspas extras que o Google coloca
+                const rows = csvText.split('\n').map(row => 
+                    row.split(',').map(cell => cell.replace(/^"(.*)"$/, '$1'))
+                );
 
-                // Filtra apenas as linhas que têm dados válidos (ignorando vazias)
-                const validRows = rows.filter(r => r.length > 5 && r[0] !== "");
+                // Filtra apenas as linhas que têm dados (ignora cabeçalhos e vazios)
+                // Baseado na tua folha: Coluna A(0)=Data, B(1)=EUR, E(4)=GBP
+                const validData = rows.filter(r => r.length > 5 && !isNaN(parseInt(r[1])));
                 
-                // Pega as últimas 15 semanas da tua folha
-                const lastData = validRows.slice(-15);
+                // Pega as últimas 12 semanas para o gráfico não ficar muito apertado
+                const last12 = validData.slice(-12);
                 
-                const labels = lastData.map(d => d[0]); // Data (Coluna A)
-                const eur = lastData.map(d => parseInt(d[1]) || 0); // EUR (Coluna B)
-                const gbp = lastData.map(d => parseInt(d[4]) || 0); // GBP (Coluna E)
+                const labels = last12.map(d => d[0]); 
+                const eurData = last12.map(d => parseInt(d[1]) || 0);
+                const gbpData = last12.map(d => parseInt(d[4]) || 0);
 
                 const ctx = document.getElementById('cotChart').getContext('2d');
                 new Chart(ctx, {
@@ -52,45 +54,38 @@
                         labels: labels,
                         datasets: [
                             { 
-                                label: 'EUR Net Position', 
-                                data: eur, 
-                                borderColor: '#0f0', 
-                                backgroundColor: 'rgba(0, 255, 0, 0.1)', 
+                                label: 'EUR Net', 
+                                data: eurData, 
+                                borderColor: '#00ff00', 
+                                backgroundColor: 'rgba(0, 255, 0, 0.05)',
                                 borderWidth: 3, 
-                                tension: 0.3,
-                                fill: true 
+                                tension: 0.4,
+                                fill: true
                             },
                             { 
-                                label: 'GBP Net Position', 
-                                data: gbp, 
+                                label: 'GBP Net', 
+                                data: gbpData, 
                                 borderColor: '#00ccff', 
-                                backgroundColor: 'transparent', 
                                 borderWidth: 3, 
-                                tension: 0.3,
-                                fill: false 
+                                tension: 0.4,
+                                fill: false
                             }
                         ]
                     },
                     options: {
                         responsive: true,
-                        plugins: {
-                            legend: { labels: { color: '#fff', font: { size: 14 } } }
-                        },
                         scales: {
-                            y: { 
-                                grid: { color: '#222' }, 
-                                ticks: { color: '#aaa' } 
-                            },
-                            x: { 
-                                grid: { color: '#222' }, 
-                                ticks: { color: '#aaa', maxRotation: 45, minRotation: 45 } 
-                            }
+                            y: { grid: { color: '#222' }, ticks: { color: '#888' } },
+                            x: { grid: { display: false }, ticks: { color: '#888', maxRotation: 45 } }
+                        },
+                        plugins: {
+                            legend: { labels: { color: '#fff', font: { family: 'monospace' } } }
                         }
                     }
                 });
             } catch (e) {
-                console.error(e);
-                document.body.innerHTML += `<p style='color:red; margin-top:20px;'>Erro: Certifica-te que a folha está com 'Partilha por Link' ativa para 'Qualquer pessoa com o link'.</p>`;
+                console.error("Erro:", e);
+                document.body.innerHTML += `<p style='color:red; font-size:12px;'>Erro na ligação. Verifica o acesso no Sheets.</p>`;
             }
         }
         loadChart();
