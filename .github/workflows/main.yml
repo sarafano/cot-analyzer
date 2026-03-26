@@ -1,16 +1,18 @@
 name: Update COT Data
 on:
+  workflow_dispatch:
   schedule:
     - cron: '0 21 * * 5'
-  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: '3.9'
       - name: Install dependencies
@@ -22,5 +24,5 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add euro_data.json
-          git commit -m "Update COT" || exit 0
+          git commit -m "Update COT Data" || echo "Sem mudanças"
           git push
