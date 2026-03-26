@@ -1,62 +1,26 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COT Sentiment</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body { background: #000; color: #0f0; font-family: sans-serif; text-align: center; padding: 10px; }
-        .chart-container { width: 100%; max-width: 800px; margin: auto; background: #111; padding: 15px; border-radius: 10px; border: 1px solid #333; }
-    </style>
+    <style>body{background:#000;color:#0f0;font-family:sans-serif;}</style>
 </head>
 <body>
-    <h1>INSTITUTIONAL SENTIMENT</h1>
-    <div class="chart-container"><canvas id="cotChart"></canvas></div>
-
+    <canvas id="chart"></canvas>
     <script>
-        const csvURL = "https://docs.google.com/spreadsheets/d/1OQoOsv37W-A9oU4OSajwPm-Wnu511rYKcDPchGLhxnM/gviz/tq?tqx=out:csv";
-
-        async function loadChart() {
-            try {
-                const res = await fetch(csvURL);
-                const text = await res.text();
-                // Divide por linhas e remove aspas e vírgulas de milhares
-                const rows = text.split('\n').map(line => 
-                    line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim())
-                );
-
-                // Pegamos as últimas 15 linhas que tenham uma data na primeira coluna
-                const data = rows.filter(r => r[0] && r[0].length > 5).slice(-15);
-
-                const labels = data.map(d => d[0]);
-                // Converte para número removendo qualquer símbolo estranho
-                const parseNet = (val) => parseFloat(val.replace(/[^\d.-]/g, '')) || 0;
-
-                const eur = data.map(d => parseNet(d[1])); // Coluna B
-                const gbp = data.map(d => parseNet(d[3])); // Coluna D (ajustado conforme imagem)
-
-                new Chart(document.getElementById('cotChart'), {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [
-                            { label: 'EUR', data: eur, borderColor: '#0f0', borderWidth: 3, tension: 0.3, fill: false },
-                            { label: 'GBP', data: gbp, borderColor: '#0cf', borderWidth: 3, tension: 0.3, fill: false }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        scales: {
-                            y: { grid: { color: '#222' }, ticks: { color: '#888' } },
-                            x: { ticks: { color: '#888' } }
-                        },
-                        plugins: { legend: { labels: { color: '#fff' } } }
-                    }
-                });
-            } catch (e) { console.error(e); }
-        }
-        loadChart();
+        const url = "https://docs.google.com/spreadsheets/d/1OQoOsv37W-A9oU4OSajwPm-Wnu511rYKcDPchGLhxnM/gviz/tq?tqx=out:csv";
+        fetch(url).then(r => r.text()).then(txt => {
+            const rows = txt.split('\n').map(r => r.split(','));
+            // SÓ PEGA LINHAS QUE TÊM NÚMEROS REAIS (Ignora os #REF! e #ERROR!)
+            const data = rows.filter(r => r[1] && !isNaN(parseFloat(r[1].replace(/"/g,'')))).slice(-10);
+            
+            new Chart(document.getElementById('chart'), {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d[0].replace(/"/g,'')),
+                    datasets: [{ label:'EUR', data: data.map(d => parseFloat(d[1].replace(/"/g,''))), borderColor:'#0f0' }]
+                }
+            });
+        });
     </script>
 </body>
 </html>
