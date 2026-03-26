@@ -1,59 +1,59 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>COT Sentiment</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-body { background: #000; color: #0f0; font-family: sans-serif; text-align: center; padding: 10px; }
-.chart-container { width: 100%; max-width: 800px; margin: auto; background: #111; padding: 10px; border-radius: 10px; border: 1px solid #333; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COT Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background: #000; color: #0f0; font-family: sans-serif; text-align: center; padding: 10px; }
+        .chart-container { width: 100%; max-width: 800px; margin: auto; background: #111; padding: 15px; border-radius: 10px; border: 1px solid #333; }
+        h1 { font-size: 1.2rem; text-shadow: 0 0 10px #0f0; }
+    </style>
 </head>
 <body>
-<h1>INSTITUTIONAL SENTIMENT</h1>
-<div class="chart-container"><canvas id="cotChart"></canvas></div>
-<script>
-const csvURL = "https://docs.google.com/spreadsheets/d/1OQoOsv37W-A9oU4OSajwPm-Wnu511rYKcDPchGLhxnM/gviz/tq?tqx=out:csv";
+    <h1>INSTITUTIONAL SENTIMENT</h1>
+    <div class="chart-container"><canvas id="cotChart"></canvas></div>
 
-function cleanNum(txt) {
-    if (!txt) return 0;
-    // Remove tudo o que não é número ou sinal de menos
-    let n = txt.replace(/"/g, '').replace(/[^\d.-]/g, '');
-    return parseFloat(n) || 0;
-}
+    <script>
+        // ESTE É O LINK CORRIGIDO PARA A TUA FOLHA "NetPositions"
+        const csvURL = "https://docs.google.com/spreadsheets/d/1OQoOsv37W-A9oU4OSajwPm-Wnu511rYKcDPchGLhxnM/gviz/tq?tqx=out:csv&sheet=NetPositions";
 
-async function loadChart() {
-    try {
-        const response = await fetch(csvURL);
-        const text = await response.text();
-        const rows = text.split('\n').map(line => line.split(','));
-        
-        // Filtra linhas que tenham algo na coluna da Data (A) e no EUR (B)
-        const validRows = rows.filter(r => r.length > 5 && r[0].length > 2);
-        const last15 = validRows.slice(-15);
+        function clean(val) {
+            if(!val) return 0;
+            return parseFloat(val.replace(/"/g, '').replace(/[^\d.-]/g, '')) || 0;
+        }
 
-        new Chart(document.getElementById('cotChart'), {
-            type: 'line',
-            data: {
-                labels: last15.map(d => d[0].replace(/"/g, '')),
-                datasets: [
-                    { label: 'EUR Net', data: last15.map(d => cleanNum(d[1])), borderColor: '#0f0', tension: 0.3, fill: false },
-                    { label: 'GBP Net', data: last15.map(d => cleanNum(d[4])), borderColor: '#0cf', tension: 0.3, fill: false }
-                ]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: { grid: { color: '#222' }, ticks: { color: '#888' } },
-                    x: { grid: { display: false }, ticks: { color: '#888' } }
-                },
-                plugins: { legend: { labels: { color: '#fff' } } }
-            }
-        });
-    } catch (e) { console.error(e); }
-}
-loadChart();
-</script>
+        async function init() {
+            try {
+                const res = await fetch(csvURL);
+                const text = await res.text();
+                const rows = text.split('\n').map(line => line.split(','));
+
+                // Filtra para garantir que pegamos linhas com datas reais (Coluna A)
+                const data = rows.filter(r => r.length > 5 && r[0].includes("/"));
+                const last = data.slice(-12); // Últimas 12 semanas
+
+                new Chart(document.getElementById('cotChart'), {
+                    type: 'line',
+                    data: {
+                        labels: last.map(d => d[0].replace(/"/g, '')),
+                        datasets: [
+                            { label: 'EUR', data: last.map(d => clean(d[1])), borderColor: '#0f0', tension: 0.3 },
+                            { label: 'GBP', data: last.map(d => clean(d[4])), borderColor: '#0cf', tension: 0.3 }
+                        ]
+                    },
+                    options: {
+                        scales: {
+                            y: { grid: { color: '#222' }, ticks: { color: '#888' } },
+                            x: { ticks: { color: '#888' } }
+                        },
+                        plugins: { legend: { labels: { color: '#fff' } } }
+                    }
+                });
+            } catch (e) { console.error("Erro ao carregar Sheets"); }
+        }
+        init();
+    </script>
 </body>
 </html>
