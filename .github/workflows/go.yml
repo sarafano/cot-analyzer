@@ -1,1 +1,23 @@
-
+name: COT
+on:
+  workflow_dispatch:
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Libs
+        run: pip install pandas cot-reports
+      - name: Work
+        run: python cot_update.py
+      - name: Push
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          git commit -m "update" || exit 0
+          git push
