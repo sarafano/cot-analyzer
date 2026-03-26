@@ -1,24 +1,99 @@
-const sheetURL = "https://docs.google.com/spreadsheets/d/1OQoOsv37W-A9oU40sajwPm-Wnu511rYKcDPchGLhxnM/edit?usp=drivesdk";
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COT Sentiment Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; text-align: center; margin: 20px; }
+        .chart-container { width: 95%; max-width: 800px; margin: auto; background: #111; padding: 15px; border-radius: 10px; border: 1px solid #333; box-shadow: 0 0 20px rgba(0,255,0,0.1); }
+        h1 { font-size: 1.5rem; text-shadow: 0 0 10px #0f0; margin-bottom: 20px; }
+        .footer { color: #555; margin-top: 20px; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
 
-async function fetchData() {
-    const response = await fetch(sheetURL);
-    const text = await response.text();
-    const rows = text.split('\n').map(row => row.split(','));
+    <h1>INSTITUTIONAL SENTIMENT</h1>
     
-    // Filtramos para pegar apenas as últimas 10 semanas para não sobrecarregar o gráfico
-    const dataHistory = rows.slice(-10); 
+    <div class="chart-container">
+        <canvas id="cotChart"></canvas>
+    </div>
 
-    const cotData = { EUR: [], GBP: [], CAD: [], GOLD: [] };
+    <div class="footer">Dados lidos em tempo real do Google Sheets</div>
 
-    dataHistory.forEach(cols => {
-        if (cols.length > 10) {
-            const date = cols[0]; // Coluna A
-            cotData.EUR.push({ date: date, net: parseInt(cols[1]) || 0 });  // Coluna B
-            cotData.GBP.push({ date: date, net: parseInt(cols[4]) || 0 });  // Coluna E
-            cotData.CAD.push({ date: date, net: parseInt(cols[6]) || 0 });  // Coluna G
-            cotData.GOLD.push({ date: date, net: parseInt(cols[10]) || 0 }); // Coluna K
+    <script>
+        // O teu link de exportação direta configurado
+        const csvURL = "https://docs.google.com/spreadsheets/d/1OQoOsv37W-A9oU4OSajwPm-Wnu511rYKcDPchGLhxnM/export?format=csv";
+
+        async function loadChart() {
+            try {
+                const response = await fetch(csvURL);
+                if (!response.ok) throw new Error("Não foi possível aceder à folha");
+                
+                const csvText = await response.text();
+                // Divide por linhas e depois por vírgulas
+                const rows = csvText.split('\n').map(row => row.split(','));
+
+                // Filtra apenas as linhas que têm dados válidos (ignorando vazias)
+                const validRows = rows.filter(r => r.length > 5 && r[0] !== "");
+                
+                // Pega as últimas 15 semanas da tua folha
+                const lastData = validRows.slice(-15);
+                
+                const labels = lastData.map(d => d[0]); // Data (Coluna A)
+                const eur = lastData.map(d => parseInt(d[1]) || 0); // EUR (Coluna B)
+                const gbp = lastData.map(d => parseInt(d[4]) || 0); // GBP (Coluna E)
+
+                const ctx = document.getElementById('cotChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { 
+                                label: 'EUR Net Position', 
+                                data: eur, 
+                                borderColor: '#0f0', 
+                                backgroundColor: 'rgba(0, 255, 0, 0.1)', 
+                                borderWidth: 3, 
+                                tension: 0.3,
+                                fill: true 
+                            },
+                            { 
+                                label: 'GBP Net Position', 
+                                data: gbp, 
+                                borderColor: '#00ccff', 
+                                backgroundColor: 'transparent', 
+                                borderWidth: 3, 
+                                tension: 0.3,
+                                fill: false 
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { labels: { color: '#fff', font: { size: 14 } } }
+                        },
+                        scales: {
+                            y: { 
+                                grid: { color: '#222' }, 
+                                ticks: { color: '#aaa' } 
+                            },
+                            x: { 
+                                grid: { color: '#222' }, 
+                                ticks: { color: '#aaa', maxRotation: 45, minRotation: 45 } 
+                            }
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error(e);
+                document.body.innerHTML += `<p style='color:red; margin-top:20px;'>Erro: Certifica-te que a folha está com 'Partilha por Link' ativa para 'Qualquer pessoa com o link'.</p>`;
+            }
         }
-    });
-
-    return cotData;
-}
+        loadChart();
+    </script>
+</body>
+</html>
