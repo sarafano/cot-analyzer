@@ -1,111 +1,24 @@
-<!DOCTYPE html>
-<html lang="pt">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COT Sniper Pro</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; text-align: center; margin: 0; padding: 15px; }
-        h1 { font-size: 1.4rem; letter-spacing: 3px; margin-bottom: 20px; text-shadow: 0 0 10px #0f0; }
-        .btn-group { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin-bottom: 25px; }
-        button { 
-            background: #000; color: #0f0; border: 1px solid #0f0; 
-            padding: 12px 18px; cursor: pointer; font-weight: bold; 
-            text-transform: uppercase; transition: 0.3s;
-        }
-        button:hover { background: #0f0; color: #000; box-shadow: 0 0 15px #0f0; }
-        .container { 
-            width: 100%; max-width: 900px; margin: auto; 
-            border: 1px solid #333; padding: 10px; background: #050505; 
-            border-radius: 5px; box-shadow: inset 0 0 20px #000;
-        }
-        #status { font-size: 0.8rem; color: #555; margin-top: 15px; }
-    </style>
-</head>
-<body>
-    <h1>INSTITUTIONAL SENTIMENT</h1>
+const sheetURL = "https://docs.google.com/spreadsheets/d/1OQoOsv37W-A9oU40sajwPm-Wnu511rYKcDPchGLhxnM/edit?usp=drivesdk";
+
+async function fetchData() {
+    const response = await fetch(sheetURL);
+    const text = await response.text();
+    const rows = text.split('\n').map(row => row.split(','));
     
-    <div class="btn-group">
-        <button onclick="updateChart('EUR', '#0f0')">EUR</button>
-        <button onclick="updateChart('GBP', '#00d4ff')">GBP</button>
-        <button onclick="updateChart('CAD', '#ff4500')">CAD</button>
-        <button onclick="updateChart('GOLD', '#ffd700')">GOLD</button>
-    </div>
+    // Filtramos para pegar apenas as últimas 10 semanas para não sobrecarregar o gráfico
+    const dataHistory = rows.slice(-10); 
 
-    <div class="container">
-        <canvas id="cotChart"></canvas>
-    </div>
-    <div id="status">A carregar dados dos ativos...</div>
+    const cotData = { EUR: [], GBP: [], CAD: [], GOLD: [] };
 
-    <script>
-        let myChart;
-        let globalData;
-
-        // Função para carregar dados forçando a atualização (anti-cache)
-        async function loadData() {
-            try {
-                // O timestamp no final (?t=...) obriga o browser a ler o ficheiro novo
-                const response = await fetch('euro_data.json?t=' + new Date().getTime());
-                if (!response.ok) throw new Error("Ficheiro não encontrado");
-                
-                globalData = await response.json();
-                document.getElementById('status').innerText = "Terminal Online. Selecione um ativo.";
-                
-                // Inicia com o Euro por defeito
-                if (globalData['EUR']) updateChart('EUR', '#0f0');
-            } catch (e) {
-                document.getElementById('status').innerText = "ERRO: O robô ainda não processou os novos ativos. Vai a 'Actions' e clica em 'Run workflow'!";
-                console.error(e);
-            }
+    dataHistory.forEach(cols => {
+        if (cols.length > 10) {
+            const date = cols[0]; // Coluna A
+            cotData.EUR.push({ date: date, net: parseInt(cols[1]) || 0 });  // Coluna B
+            cotData.GBP.push({ date: date, net: parseInt(cols[4]) || 0 });  // Coluna E
+            cotData.CAD.push({ date: date, net: parseInt(cols[6]) || 0 });  // Coluna G
+            cotData.GOLD.push({ date: date, net: parseInt(cols[10]) || 0 }); // Coluna K
         }
+    });
 
-        function updateChart(symbol, color) {
-            const ctx = document.getElementById('cotChart').getContext('2d');
-            const data = globalData[symbol];
-            
-            if (!data) {
-                alert("Dados para " + symbol + " ainda não processados pelo robô.");
-                return;
-            }
-
-            if (myChart) myChart.destroy();
-            
-            myChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: data.map(d => d.date),
-                    datasets: [{
-                        label: symbol + ' - Posicionamento Institucional Líquido',
-                        data: data.map(d => d.net),
-                        borderColor: color,
-                        backgroundColor: color + '22',
-                        borderWidth: 3,
-                        pointBackgroundColor: color,
-                        pointRadius: 6,
-                        fill: true,
-                        tension: 0.3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { 
-                        legend: { labels: { color: '#fff', font: { family: 'monospace', size: 12 } } } 
-                    },
-                    scales: {
-                        x: { ticks: { color: '#888' }, grid: { color: '#111' } },
-                        y: { 
-                            ticks: { color: '#fff' }, 
-                            grid: { color: '#222' },
-                            title: { display: true, text: 'Contratos (Long - Short)', color: '#444' }
-                        }
-                    }
-                }
-            });
-            document.getElementById('status').innerText = "A visualizar: " + symbol;
-        }
-
-        loadData();
-    </script>
-</body>
-</html>
+    return cotData;
+}
