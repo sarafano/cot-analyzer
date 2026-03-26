@@ -15,38 +15,43 @@ body { background: #000; color: #0f0; font-family: sans-serif; text-align: cente
 <div class="chart-container"><canvas id="cotChart"></canvas></div>
 <script>
 const csvURL = "https://docs.google.com/spreadsheets/d/1OQoOsv37W-A9oU4OSajwPm-Wnu511rYKcDPchGLhxnM/gviz/tq?tqx=out:csv";
-async function loadChart() {
-try {
-const response = await fetch(csvURL);
-const text = await response.text();
-const rows = text.split('\n').map(line => {
-const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-return matches ? matches.map(m => m.replace(/"/g, '')) : [];
-});
-const validRows = rows.filter(r => r.length > 5 && r[0] !== "" && !isNaN(parseFloat(r[1].replace(/,/g, ''))));
-const last15 = validRows.slice(-15);
-const labels = last15.map(d => d[0]);
-const eurData = last15.map(d => parseFloat(d[1].replace(/,/g, '')) || 0);
-const gbpData = last15.map(d => parseFloat(d[4].replace(/,/g, '')) || 0);
-new Chart(document.getElementById('cotChart'), {
-type: 'line',
-data: {
-labels: labels,
-datasets: [
-{ label: 'EUR Net', data: eurData, borderColor: '#0f0', backgroundColor: 'rgba(0,255,0,0.1)', fill: true, tension: 0.3 },
-{ label: 'GBP Net', data: gbpData, borderColor: '#0cf', fill: false, tension: 0.3 }
-]
-},
-options: {
-responsive: true,
-scales: {
-y: { grid: { color: '#222' }, ticks: { color: '#888' } },
-x: { grid: { display: false }, ticks: { color: '#888' } }
-},
-plugins: { legend: { labels: { color: '#fff' } } }
+
+function cleanNum(txt) {
+    if (!txt) return 0;
+    // Remove tudo o que não é número ou sinal de menos
+    let n = txt.replace(/"/g, '').replace(/[^\d.-]/g, '');
+    return parseFloat(n) || 0;
 }
-});
-} catch (e) { console.error(e); }
+
+async function loadChart() {
+    try {
+        const response = await fetch(csvURL);
+        const text = await response.text();
+        const rows = text.split('\n').map(line => line.split(','));
+        
+        // Filtra linhas que tenham algo na coluna da Data (A) e no EUR (B)
+        const validRows = rows.filter(r => r.length > 5 && r[0].length > 2);
+        const last15 = validRows.slice(-15);
+
+        new Chart(document.getElementById('cotChart'), {
+            type: 'line',
+            data: {
+                labels: last15.map(d => d[0].replace(/"/g, '')),
+                datasets: [
+                    { label: 'EUR Net', data: last15.map(d => cleanNum(d[1])), borderColor: '#0f0', tension: 0.3, fill: false },
+                    { label: 'GBP Net', data: last15.map(d => cleanNum(d[4])), borderColor: '#0cf', tension: 0.3, fill: false }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { grid: { color: '#222' }, ticks: { color: '#888' } },
+                    x: { grid: { display: false }, ticks: { color: '#888' } }
+                },
+                plugins: { legend: { labels: { color: '#fff' } } }
+            }
+        });
+    } catch (e) { console.error(e); }
 }
 loadChart();
 </script>
