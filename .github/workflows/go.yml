@@ -25,11 +25,12 @@ jobs:
       - name: Run script
         run: python cot_update.py
 
-      - name: Commit and Push
+            - name: Commit and Push
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git pull origin main --rebase # <--- ISTO resolve o erro do print!
+          git fetch origin main
+          git reset --soft origin/main
           git add euro_data.json
           git commit -m "Update COT data" || exit 0
-          git push origin main
+          git push origin main --force
