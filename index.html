@@ -4,20 +4,21 @@
     <title>COT Sniper Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; text-align: center; }
-        .btn-group { margin: 20px; }
-        button { background: #000; color: #0f0; border: 1px solid #0f0; padding: 10px; cursor: pointer; margin: 5px; }
+        body { background: #000; color: #0f0; font-family: monospace; text-align: center; margin: 0; padding: 20px; }
+        .btn-group { margin-bottom: 20px; display: flex; justify-content: center; flex-wrap: wrap; }
+        button { background: #000; color: #0f0; border: 1px solid #0f0; padding: 12px 20px; cursor: pointer; margin: 5px; font-weight: bold; text-transform: uppercase; }
         button:hover { background: #0f0; color: #000; }
-        .container { width: 90%; margin: auto; border: 1px solid #0f0; padding: 20px; }
+        .container { width: 95%; max-width: 800px; margin: auto; border: 1px solid #0f0; padding: 10px; background: #050505; }
+        h1 { font-size: 1.2rem; letter-spacing: 2px; }
     </style>
 </head>
 <body>
     <h1>INSTITUTIONAL SENTIMENT</h1>
     <div class="btn-group">
-        <button onclick="updateChart('EUR')">EUR</button>
-        <button onclick="updateChart('GBP')">GBP</button>
-        <button onclick="updateChart('CAD')">CAD</button>
-        <button onclick="updateChart('GOLD')">GOLD</button>
+        <button onclick="updateChart('EUR', '#0f0')">EUR</button>
+        <button onclick="updateChart('GBP', '#00d4ff')">GBP</button>
+        <button onclick="updateChart('CAD', '#ff4500')">CAD</button>
+        <button onclick="updateChart('GOLD', '#ffd700')">GOLD</button>
     </div>
     <div class="container">
         <canvas id="cotChart"></canvas>
@@ -27,15 +28,20 @@
         let myChart;
         let globalData;
 
-        fetch('euro_data.json').then(r => r.json()).then(data => {
-            globalData = data;
-            updateChart('EUR'); // Começa pelo Euro
-        });
+        // Tenta carregar os dados
+        fetch('euro_data.json?v=' + Date.now())
+            .then(r => r.json())
+            .then(data => {
+                globalData = data;
+                updateChart('EUR', '#0f0'); // Começa pelo Euro
+            })
+            .catch(e => console.error("Erro ao ler JSON:", e));
 
-        function updateChart(symbol) {
+        function updateChart(symbol, color) {
             const ctx = document.getElementById('cotChart').getContext('2d');
             const data = globalData[symbol];
             
+            if (!data) return;
             if (myChart) myChart.destroy();
             
             myChart = new Chart(ctx, {
@@ -45,12 +51,22 @@
                     datasets: [{
                         label: symbol + ' Net Position',
                         data: data.map(d => d.net),
-                        borderColor: '#0f0',
-                        backgroundColor: 'rgba(0, 255, 0, 0.1)',
-                        fill: true
+                        borderColor: color,
+                        backgroundColor: color + '33', // Cor com transparência
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        fill: true,
+                        tension: 0.3
                     }]
                 },
-                options: { scales: { y: { grid: { color: '#222' } } } }
+                options: {
+                    responsive: true,
+                    plugins: { legend: { labels: { color: color } } },
+                    scales: {
+                        x: { ticks: { color: '#555' }, grid: { color: '#111' } },
+                        y: { ticks: { color: color }, grid: { color: '#222' } }
+                    }
+                }
             });
         }
     </script>
