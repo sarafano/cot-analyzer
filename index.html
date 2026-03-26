@@ -1,39 +1,58 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sniper COT - EUR</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COT Sniper Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { background: #000; color: #00ff00; font-family: monospace; padding: 15px; }
-        .box { border: 1px solid #00ff00; padding: 10px; border-radius: 5px; margin-bottom: 20px; }
-        h2 { text-transform: uppercase; letter-spacing: 2px; }
+        body { background: #000; color: #0f0; font-family: monospace; text-align: center; }
+        .btn-group { margin: 20px; }
+        button { background: #000; color: #0f0; border: 1px solid #0f0; padding: 10px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0f0; color: #000; }
+        .container { width: 90%; margin: auto; border: 1px solid #0f0; padding: 20px; }
     </style>
 </head>
 <body>
-    <div class="box">
-        <h2>EUR Institutional Sentiment</h2>
-        <canvas id="chart"></canvas>
+    <h1>INSTITUTIONAL SENTIMENT</h1>
+    <div class="btn-group">
+        <button onclick="updateChart('EUR')">EUR</button>
+        <button onclick="updateChart('GBP')">GBP</button>
+        <button onclick="updateChart('CAD')">CAD</button>
+        <button onclick="updateChart('GOLD')">GOLD</button>
     </div>
+    <div class="container">
+        <canvas id="cotChart"></canvas>
+    </div>
+
     <script>
-        fetch('euro_data.json')
-            .then(r => r.json())
-            .then(data => {
-                const ctx = document.getElementById('chart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: data.map(d => d.date),
-                        datasets: [{
-                            label: 'Net Position',
-                            data: data.map(d => d.net),
-                            borderColor: '#00ff00',
-                            backgroundColor: 'rgba(0, 255, 0, 0.1)',
-                            fill: true
-                        }]
-                    }
-                });
+        let myChart;
+        let globalData;
+
+        fetch('euro_data.json').then(r => r.json()).then(data => {
+            globalData = data;
+            updateChart('EUR'); // Começa pelo Euro
+        });
+
+        function updateChart(symbol) {
+            const ctx = document.getElementById('cotChart').getContext('2d');
+            const data = globalData[symbol];
+            
+            if (myChart) myChart.destroy();
+            
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.date),
+                    datasets: [{
+                        label: symbol + ' Net Position',
+                        data: data.map(d => d.net),
+                        borderColor: '#0f0',
+                        backgroundColor: 'rgba(0, 255, 0, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: { scales: { y: { grid: { color: '#222' } } } }
             });
+        }
     </script>
 </body>
 </html>
