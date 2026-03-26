@@ -1,0 +1,27 @@
+name: Update COT Data
+on:
+  schedule:
+    - cron: '0 21 * * 5' # Sexta às 21h00
+  workflow_dispatch: # Permite-te rodar manualmente no telemóvel
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: pip install pandas cot-reports
+      - name: Run script
+        run: python cot_update.py
+      - name: Commit changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add euro_data.json
+          git commit -m "Atualização automática COT"
+          git push
