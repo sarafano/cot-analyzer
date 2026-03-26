@@ -1,47 +1,71 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>COT Sniper Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; text-align: center; margin: 0; padding: 20px; }
-        .btn-group { margin-bottom: 20px; display: flex; justify-content: center; flex-wrap: wrap; }
-        button { background: #000; color: #0f0; border: 1px solid #0f0; padding: 12px 20px; cursor: pointer; margin: 5px; font-weight: bold; text-transform: uppercase; }
-        button:hover { background: #0f0; color: #000; }
-        .container { width: 95%; max-width: 800px; margin: auto; border: 1px solid #0f0; padding: 10px; background: #050505; }
-        h1 { font-size: 1.2rem; letter-spacing: 2px; }
+        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; text-align: center; margin: 0; padding: 15px; }
+        h1 { font-size: 1.4rem; letter-spacing: 3px; margin-bottom: 20px; text-shadow: 0 0 10px #0f0; }
+        .btn-group { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin-bottom: 25px; }
+        button { 
+            background: #000; color: #0f0; border: 1px solid #0f0; 
+            padding: 12px 18px; cursor: pointer; font-weight: bold; 
+            text-transform: uppercase; transition: 0.3s;
+        }
+        button:hover { background: #0f0; color: #000; box-shadow: 0 0 15px #0f0; }
+        .container { 
+            width: 100%; max-width: 900px; margin: auto; 
+            border: 1px solid #333; padding: 10px; background: #050505; 
+            border-radius: 5px; box-shadow: inset 0 0 20px #000;
+        }
+        #status { font-size: 0.8rem; color: #555; margin-top: 10px; }
     </style>
 </head>
 <body>
     <h1>INSTITUTIONAL SENTIMENT</h1>
+    
     <div class="btn-group">
         <button onclick="updateChart('EUR', '#0f0')">EUR</button>
         <button onclick="updateChart('GBP', '#00d4ff')">GBP</button>
         <button onclick="updateChart('CAD', '#ff4500')">CAD</button>
         <button onclick="updateChart('GOLD', '#ffd700')">GOLD</button>
     </div>
+
     <div class="container">
         <canvas id="cotChart"></canvas>
     </div>
+    <div id="status">A aguardar dados do mercado...</div>
 
     <script>
         let myChart;
         let globalData;
 
-        // Tenta carregar os dados
-        fetch('euro_data.json?v=' + Date.now())
-            .then(r => r.json())
-            .then(data => {
-                globalData = data;
-                updateChart('EUR', '#0f0'); // Começa pelo Euro
-            })
-            .catch(e => console.error("Erro ao ler JSON:", e));
+        // Função para carregar dados ignorando a cache
+        async function loadData() {
+            try {
+                const response = await fetch('euro_data.json?nocache=' + new Date().getTime());
+                if (!response.ok) throw new Error("Ficheiro de dados não encontrado");
+                
+                globalData = await response.json();
+                document.getElementById('status').innerText = "Dados carregados com sucesso.";
+                updateChart('EUR', '#0f0'); // Inicia com o Euro
+            } catch (e) {
+                document.getElementById('status').innerText = "ERRO: Corre o GitHub Action para gerar os dados!";
+                console.error(e);
+            }
+        }
 
         function updateChart(symbol, color) {
             const ctx = document.getElementById('cotChart').getContext('2d');
             const data = globalData[symbol];
             
-            if (!data) return;
+            if (!data) {
+                alert("Dados para " + symbol + " ainda não processados pelo robô.");
+                return;
+            }
+
             if (myChart) myChart.destroy();
             
             myChart = new Chart(ctx, {
@@ -49,26 +73,36 @@
                 data: {
                     labels: data.map(d => d.date),
                     datasets: [{
-                        label: symbol + ' Net Position',
+                        label: symbol + ' Net Position (Institucional)',
                         data: data.map(d => d.net),
                         borderColor: color,
-                        backgroundColor: color + '33', // Cor com transparência
-                        borderWidth: 2,
-                        pointRadius: 4,
+                        backgroundColor: color + '22', // Transparência
+                        borderWidth: 3,
+                        pointBackgroundColor: color,
+                        pointRadius: 5,
                         fill: true,
-                        tension: 0.3
+                        tension: 0.4
                     }]
                 },
                 options: {
                     responsive: true,
-                    plugins: { legend: { labels: { color: color } } },
+                    plugins: { 
+                        legend: { labels: { color: '#fff', font: { family: 'monospace' } } } 
+                    },
                     scales: {
-                        x: { ticks: { color: '#555' }, grid: { color: '#111' } },
-                        y: { ticks: { color: color }, grid: { color: '#222' } }
+                        x: { ticks: { color: '#888' }, grid: { color: '#222' } },
+                        y: { 
+                            ticks: { color: '#fff' }, 
+                            grid: { color: '#333' },
+                            title: { display: true, text: 'Contratos Líquidos', color: '#555' }
+                        }
                     }
                 }
             });
         }
+
+        // Iniciar
+        loadData();
     </script>
 </body>
 </html>
