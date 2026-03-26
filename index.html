@@ -20,7 +20,7 @@
             border: 1px solid #333; padding: 10px; background: #050505; 
             border-radius: 5px; box-shadow: inset 0 0 20px #000;
         }
-        #status { font-size: 0.8rem; color: #555; margin-top: 10px; }
+        #status { font-size: 0.8rem; color: #555; margin-top: 15px; }
     </style>
 </head>
 <body>
@@ -36,23 +36,26 @@
     <div class="container">
         <canvas id="cotChart"></canvas>
     </div>
-    <div id="status">A aguardar dados do mercado...</div>
+    <div id="status">A carregar dados dos ativos...</div>
 
     <script>
         let myChart;
         let globalData;
 
-        // Função para carregar dados ignorando a cache
+        // Função para carregar dados forçando a atualização (anti-cache)
         async function loadData() {
             try {
-                const response = await fetch('euro_data.json?nocache=' + new Date().getTime());
-                if (!response.ok) throw new Error("Ficheiro de dados não encontrado");
+                // O timestamp no final (?t=...) obriga o browser a ler o ficheiro novo
+                const response = await fetch('euro_data.json?t=' + new Date().getTime());
+                if (!response.ok) throw new Error("Ficheiro não encontrado");
                 
                 globalData = await response.json();
-                document.getElementById('status').innerText = "Dados carregados com sucesso.";
-                updateChart('EUR', '#0f0'); // Inicia com o Euro
+                document.getElementById('status').innerText = "Terminal Online. Selecione um ativo.";
+                
+                // Inicia com o Euro por defeito
+                if (globalData['EUR']) updateChart('EUR', '#0f0');
             } catch (e) {
-                document.getElementById('status').innerText = "ERRO: Corre o GitHub Action para gerar os dados!";
+                document.getElementById('status').innerText = "ERRO: O robô ainda não processou os novos ativos. Vai a 'Actions' e clica em 'Run workflow'!";
                 console.error(e);
             }
         }
@@ -73,35 +76,35 @@
                 data: {
                     labels: data.map(d => d.date),
                     datasets: [{
-                        label: symbol + ' Net Position (Institucional)',
+                        label: symbol + ' - Posicionamento Institucional Líquido',
                         data: data.map(d => d.net),
                         borderColor: color,
-                        backgroundColor: color + '22', // Transparência
+                        backgroundColor: color + '22',
                         borderWidth: 3,
                         pointBackgroundColor: color,
-                        pointRadius: 5,
+                        pointRadius: 6,
                         fill: true,
-                        tension: 0.4
+                        tension: 0.3
                     }]
                 },
                 options: {
                     responsive: true,
                     plugins: { 
-                        legend: { labels: { color: '#fff', font: { family: 'monospace' } } } 
+                        legend: { labels: { color: '#fff', font: { family: 'monospace', size: 12 } } } 
                     },
                     scales: {
-                        x: { ticks: { color: '#888' }, grid: { color: '#222' } },
+                        x: { ticks: { color: '#888' }, grid: { color: '#111' } },
                         y: { 
                             ticks: { color: '#fff' }, 
-                            grid: { color: '#333' },
-                            title: { display: true, text: 'Contratos Líquidos', color: '#555' }
+                            grid: { color: '#222' },
+                            title: { display: true, text: 'Contratos (Long - Short)', color: '#444' }
                         }
                     }
                 }
             });
+            document.getElementById('status').innerText = "A visualizar: " + symbol;
         }
 
-        // Iniciar
         loadData();
     </script>
 </body>
