@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COT Dashboard</title>
+    <title>COT Sentiment</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { background: #000; color: #0f0; font-family: sans-serif; text-align: center; padding: 10px; }
         .chart-container { width: 100%; max-width: 800px; margin: auto; background: #111; padding: 15px; border-radius: 10px; border: 1px solid #333; }
-        h1 { font-size: 1.2rem; text-shadow: 0 0 10px #0f0; }
     </style>
 </head>
 <body>
@@ -16,34 +15,38 @@
     <div class="chart-container"><canvas id="cotChart"></canvas></div>
 
     <script>
-        // ESTE É O LINK CORRIGIDO PARA A TUA FOLHA "NetPositions"
-        const csvURL = "https://docs.google.com/spreadsheets/d/1OQoOsv37W-A9oU4OSajwPm-Wnu511rYKcDPchGLhxnM/gviz/tq?tqx=out:csv&sheet=NetPositions";
+        const csvURL = "https://docs.google.com/spreadsheets/d/1OQoOsv37W-A9oU4OSajwPm-Wnu511rYKcDPchGLhxnM/gviz/tq?tqx=out:csv";
 
-        function clean(val) {
-            if(!val) return 0;
-            return parseFloat(val.replace(/"/g, '').replace(/[^\d.-]/g, '')) || 0;
-        }
-
-        async function init() {
+        async function loadChart() {
             try {
                 const res = await fetch(csvURL);
                 const text = await res.text();
-                const rows = text.split('\n').map(line => line.split(','));
+                // Divide por linhas e remove aspas e vírgulas de milhares
+                const rows = text.split('\n').map(line => 
+                    line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim())
+                );
 
-                // Filtra para garantir que pegamos linhas com datas reais (Coluna A)
-                const data = rows.filter(r => r.length > 5 && r[0].includes("/"));
-                const last = data.slice(-12); // Últimas 12 semanas
+                // Pegamos as últimas 15 linhas que tenham uma data na primeira coluna
+                const data = rows.filter(r => r[0] && r[0].length > 5).slice(-15);
+
+                const labels = data.map(d => d[0]);
+                // Converte para número removendo qualquer símbolo estranho
+                const parseNet = (val) => parseFloat(val.replace(/[^\d.-]/g, '')) || 0;
+
+                const eur = data.map(d => parseNet(d[1])); // Coluna B
+                const gbp = data.map(d => parseNet(d[3])); // Coluna D (ajustado conforme imagem)
 
                 new Chart(document.getElementById('cotChart'), {
                     type: 'line',
                     data: {
-                        labels: last.map(d => d[0].replace(/"/g, '')),
+                        labels: labels,
                         datasets: [
-                            { label: 'EUR', data: last.map(d => clean(d[1])), borderColor: '#0f0', tension: 0.3 },
-                            { label: 'GBP', data: last.map(d => clean(d[4])), borderColor: '#0cf', tension: 0.3 }
+                            { label: 'EUR', data: eur, borderColor: '#0f0', borderWidth: 3, tension: 0.3, fill: false },
+                            { label: 'GBP', data: gbp, borderColor: '#0cf', borderWidth: 3, tension: 0.3, fill: false }
                         ]
                     },
                     options: {
+                        responsive: true,
                         scales: {
                             y: { grid: { color: '#222' }, ticks: { color: '#888' } },
                             x: { ticks: { color: '#888' } }
@@ -51,9 +54,9 @@
                         plugins: { legend: { labels: { color: '#fff' } } }
                     }
                 });
-            } catch (e) { console.error("Erro ao carregar Sheets"); }
+            } catch (e) { console.error(e); }
         }
-        init();
+        loadChart();
     </script>
 </body>
 </html>
