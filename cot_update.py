@@ -2,42 +2,48 @@ import pandas as pd
 import cot_reports as cot
 import json
 
-# Nomes exatos para o relatório LEGACY
-assets = {
-    "EUR": "EURO CURRENCY - CHICAGO MERCANTILE EXCHANGE",
-    "GBP": "BRITISH POUND STERLING - CHICAGO MERCANTILE EXCHANGE",
-    "CAD": "CANADIAN DOLLAR - CHICAGO MERCANTILE EXCHANGE",
-    "GOLD": "GOLD - COMMODITY EXCHANGE INC."
+# Nomes simplificados para o filtro ser mais eficaz
+assets_map = {
+    "EUR": "EURO CURRENCY",
+    "GBP": "BRITISH POUND",
+    "CAD": "CANADIAN DOLLAR",
+    "GOLD": "GOLD"
 }
 
-try:
-    # Mudança para 'legacy_fut' (o mais robusto)
-    df = cot.cot_year(2026, cot_report_type='legacy_fut')
-    all_data = {}
+def get_data():
+    all_results = {}
+    # Tenta primeiro 2026, se falhar tenta 2025
+    for year in [2026, 2025]:
+        try:
+            print(f"A tentar ano {year}...")
+            df = cot.cot_year(year, cot_report_type='legacy_fut')
+            if df.empty: continue
 
-    for symbol, name in assets.items():
-        mask = df['Market_and_Exchange_Names'].str.contains(name, case=False, na=False)
-        sub_df = df[mask].tail(12)
-        
-        if not sub_df.empty:
-            # No Legacy, os institucionais são 'Noncommercial'
-            c_date = [c for c in sub_df.columns if 'As_of_Date' in c][0]
-            c_long = 'Noncommercial_Positions_Long_All'
-            c_short = 'Noncommercial_Positions_Short_All'
+            for symbol, search_term in assets_map.items():
+                if symbol in all_results: continue # Já encontrou dados
+                
+                mask = df['Market_and_Exchange_Names'].str.contains(search_term, case=False, na=False)
+                sub_df = df[mask].tail(15)
+                
+                if not sub_df.empty:
+                    history = []
+                    for _, row in sub_df.iterrows():
+                        # Cálculo: Compras - Vendas (Non-Commercial / Institucionais)
+                        net = int(row['Noncommercial_Positions_Long_All'] - row['Noncommercial_Positions_Short_All'])
+                        date_str = str(row['As_of_Date_In_Form_YYMMDD'])
+                        history.append({"date": date_str, "net": net})
+                    all_results[symbol] = history
+                    print(f"✅ {symbol} encontrado em {year}")
             
-            history = []
-            for _, row in sub_df.iterrows():
-                history.append({
-                    "date": str(row[c_date]).split(' ')[0], 
-                    "net": int(row[c_long] - row[row[c_short]])
-                })
-            all_data[symbol] = history
+            if len(all_results) == len(assets_map): break # Já tem tudo
+        except:
+            continue
+    return all_results
 
+try:
+    final_data = get_data()
     with open('euro_data.json', 'w') as f:
-        json.dump(all_data, f)
-    print("Dados Legacy gravados!")
+        json.dump(final_data, f)
+    print("Processo concluído!")
 except Exception as e:
-    # Se falhar, tenta 2025 só para popular o gráfico
-    df = cot.cot_year(2025, cot_report_type='legacy_fut')
-    # ... mesma lógica ...
     print(f"Erro: {e}")
