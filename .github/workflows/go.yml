@@ -2,17 +2,19 @@ name: COT Update
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 22 * * 5' # Corre automaticamente todas as sextas às 22:00
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write # Permissão crucial para o robô poder gravar dados
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Baixa o histórico completo para evitar conflitos
+          fetch-depth: 0 # Baixa todo o histórico para evitar erros de sincronização
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -20,17 +22,24 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: pip install pandas requests
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas requests
 
       - name: Run script
         run: python cot_update.py
 
-            - name: Commit and Push
+      - name: Commit and Push
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
-          git reset --soft origin/main
+          
+          # Sincroniza com as tuas mudanças manuais (o [] que puseste)
+          git pull origin main --rebase
+          
+          # Adiciona os novos dados reais
           git add euro_data.json
-          git commit -m "Update COT data" || exit 0
-          git push origin main --force
+          
+          # Grava e envia, ignorando se não houver mudanças
+          git commit -m "Update COT data with real March 2026 values" || exit 0
+          git push origin main
