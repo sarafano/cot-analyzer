@@ -1,26 +1,28 @@
-name: COT-Update
+name: Update-COT
 on:
   workflow_dispatch:
   schedule:
     - cron: '0 21 * * 5'
 
 jobs:
-  run-analysis:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v3
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-      - name: Dependencies
+      - name: Install dependencies
         run: pip install pandas cot-reports
-      - name: Run
+      - name: Run script
         run: python cot_update.py
-      - name: Save
+      - name: Commit and Push
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add .
-          git commit -m "update" || exit 0
+          git add euro_data.json
+          git commit -m "Update Data" || exit 0
           git push
