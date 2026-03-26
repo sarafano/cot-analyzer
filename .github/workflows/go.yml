@@ -3,18 +3,18 @@ name: COT Update
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 22 * * 5' # Corre automaticamente todas as sextas às 22:00
+    - cron: '0 22 * * 5' # Sextas às 22h
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Permissão crucial para o robô poder gravar dados
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Baixa todo o histórico para evitar erros de sincronização
+          fetch-depth: 0 
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -34,12 +34,10 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Sincroniza com as tuas mudanças manuais (o [] que puseste)
+          # Resolve o erro de 'fetch first' sincronizando as mudanças
           git pull origin main --rebase
           
-          # Adiciona os novos dados reais
           git add euro_data.json
-          
-          # Grava e envia, ignorando se não houver mudanças
-          git commit -m "Update COT data with real March 2026 values" || exit 0
+          # O '|| exit 0' evita que o robô falhe se não houver novos dados
+          git commit -m "Update COT data" || exit 0
           git push origin main
