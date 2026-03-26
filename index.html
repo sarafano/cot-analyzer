@@ -3,90 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COT Sentiment Dashboard</title>
+    <title>COT Sentiment</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; text-align: center; margin: 0; padding: 20px; }
-        .chart-container { width: 100%; max-width: 800px; margin: auto; background: #111; padding: 15px; border-radius: 10px; border: 1px solid #333; box-shadow: 0 0 20px rgba(0,255,0,0.1); box-sizing: border-box; }
-        h1 { font-size: 1.2rem; text-shadow: 0 0 10px #0f0; margin-bottom: 20px; text-transform: uppercase; }
-        .footer { color: #444; margin-top: 20px; font-size: 0.7rem; }
+        body { background: #000; color: #0f0; font-family: sans-serif; text-align: center; padding: 10px; }
+        .chart-container { width: 100%; max-width: 800px; margin: auto; background: #111; padding: 10px; border-radius: 10px; border: 1px solid #333; }
     </style>
 </head>
 <body>
-
-    <h1>Institutional Sentiment (COT)</h1>
-    
-    <div class="chart-container">
-        <canvas id="cotChart"></canvas>
-    </div>
-
-    <div class="footer">Ligado em tempo real ao Google Sheets</div>
+    <h1>INSTITUTIONAL SENTIMENT</h1>
+    <div class="chart-container"><canvas id="cotChart"></canvas></div>
 
     <script>
-        // Link de exportação direta da tua folha específica
         const csvURL = "https://docs.google.com/spreadsheets/d/1OQoOsv37W-A9oU4OSajwPm-Wnu511rYKcDPchGLhxnM/gviz/tq?tqx=out:csv";
 
         async function loadChart() {
-            try {
-                const response = await fetch(csvURL);
-                const csvText = await response.text();
-                
-                // Limpeza: Divide por linhas e remove aspas extras que o Google coloca
-                const rows = csvText.split('\n').map(row => 
-                    row.split(',').map(cell => cell.replace(/^"(.*)"$/, '$1'))
-                );
+            const response = await fetch(csvURL);
+            const text = await response.text();
+            const rows = text.split('\n').map(r => r.split(',').map(c => c.replace(/"/g, '')));
 
-                // Filtra apenas as linhas que têm dados (ignora cabeçalhos e vazios)
-                // Baseado na tua folha: Coluna A(0)=Data, B(1)=EUR, E(4)=GBP
-                const validData = rows.filter(r => r.length > 5 && !isNaN(parseInt(r[1])));
-                
-                // Pega as últimas 12 semanas para o gráfico não ficar muito apertado
-                const last12 = validData.slice(-12);
-                
-                const labels = last12.map(d => d[0]); 
-                const eurData = last12.map(d => parseInt(d[1]) || 0);
-                const gbpData = last12.map(d => parseInt(d[4]) || 0);
+            // Encontrar em que coluna está cada ativo (Dinâmico)
+            const header = rows[0];
+            const colData = 0; // Coluna A
+            const colEur = header.findIndex(h => h.includes("EUR"));
+            const colGbp = header.findIndex(h => h.includes("GBP"));
 
-                const ctx = document.getElementById('cotChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [
-                            { 
-                                label: 'EUR Net', 
-                                data: eurData, 
-                                borderColor: '#00ff00', 
-                                backgroundColor: 'rgba(0, 255, 0, 0.05)',
-                                borderWidth: 3, 
-                                tension: 0.4,
-                                fill: true
-                            },
-                            { 
-                                label: 'GBP Net', 
-                                data: gbpData, 
-                                borderColor: '#00ccff', 
-                                borderWidth: 3, 
-                                tension: 0.4,
-                                fill: false
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        scales: {
-                            y: { grid: { color: '#222' }, ticks: { color: '#888' } },
-                            x: { grid: { display: false }, ticks: { color: '#888', maxRotation: 45 } }
-                        },
-                        plugins: {
-                            legend: { labels: { color: '#fff', font: { family: 'monospace' } } }
-                        }
-                    }
-                });
-            } catch (e) {
-                console.error("Erro:", e);
-                document.body.innerHTML += `<p style='color:red; font-size:12px;'>Erro na ligação. Verifica o acesso no Sheets.</p>`;
-            }
+            // Filtrar apenas linhas que têm data e números
+            const dataRows = rows.filter(r => r[colData] && !isNaN(parseInt(r[colEur])));
+            const last15 = dataRows.slice(-15);
+
+            new Chart(document.getElementById('cotChart'), {
+                type: 'line',
+                data: {
+                    labels: last15.map(d => d[colData]),
+                    datasets: [
+                        { label: 'EUR Net', data: last15.map(d => parseInt(d[colEur])), borderColor: '#0f0', tension: 0.3 },
+                        { label: 'GBP Net', data: last15.map(d => parseInt(d[colGbp])), borderColor: '#0cf', tension: 0.3 }
+                    ]
+                },
+                options: { scales: { y: { grid: { color: '#222' } }, x: { grid: { display: false } } } }
+            });
         }
         loadChart();
     </script>
